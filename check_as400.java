@@ -4,6 +4,7 @@ Nagios Plugin to check an IBM System i (AS/400)
 Developed June 2003
 
 After Ver 0.18,  Modified by Shao-Pin, Cheng since 2010/06/31
+After Ver 1.5.2,  Modified by francescosandri since 2020/12/15
 ------------------------------------
 
 CHANGE LOG:
@@ -106,11 +107,16 @@ CHANGE LOG:
 
 1.5.2
 * Added check for specific messages on log (CKMSG)(2019/08/21 Thanks, j. howell)
-* Added check for temp and perm address use (CKADDR) (2019/08/21Thanks, j. howell)
+* Added check for temp and perm address use (CKADDR) (2019/08/21 Thanks, j. howell)
 * Added some debug output
+
+1.5.3
+* Added support for MAXAVA HA monitoring
+* Fixed WRKPRB command to filter only *CRITICAL issues
+* Fixed Italian language pack
 --------------------------------------------------------------
-Last Modified  2019/06/11 by Shao-Pin, Cheng  , Taipei, Taiwan
-Mail & PayPal donate: cjt74392@ms10.hinet.net
+Last Modified  2022/03/01 by francescosandri, Italy
+Mail & PayPal donate: ing.francesco@gmail.com
 --------------------------------------------------------------*/
 
 
@@ -181,6 +187,7 @@ public class check_as400{
 		System.out.println("                             nf    = Ignore number of files in queue");
 		System.out.println("                          NOTE: threshold values are used on number of files");
 		System.out.println("      SBS <subsystem>   = Check if the subsystem <subsystem> is running.");
+		System.out.println("      MAXAVA <library>  = Check if the Maxava library <library> is synched or unsynched.");
 		System.out.println("                          NOTE: specify <subsystem> as library/subsystem");
 		System.out.println("      PRB               = Check if the problem was identified.(Need *WRKPRB ANZPRB/CHGPRB/DLTPRB/SNDSRVRQS auth)");
 		System.out.println("      FDN               = Number of file members; specify library/filename ");
@@ -505,6 +512,12 @@ public class check_as400{
             ARGS.addrtype=args[++i];
             flag=flag | CMD_FLAG | ARG_FLAG;
           }
+		  else if(args[i].equals("MAXAVA")){
+						ARGS.command=MAXAVA;
+						ARGS.checkVariable=LIB;
+						ARGS.library=args[++i];
+						flag=flag | CMD_FLAG | ARG_FLAG | WARN_FLAG | CRIT_FLAG;
+					}
 				}
 				else{
 					System.out.println("Unknown option ["+args[i]+"]");
@@ -673,7 +686,7 @@ public class check_as400{
 				/*Wait and recieve output screen*/
 				return waitReceive("processing",NONE);
 			case WRKPRB:
-				send("WRKPRB\r");
+				send("WRKPRB PRBCGY(*CRITICAL)\r");
 				/*Wait and recieve output screen*/
 				return waitReceive("F3=",NONE);
 			case DSPDGSTS:
@@ -721,6 +734,11 @@ public class check_as400{
 				logout(OK);							
 			default:
 				return null;
+	  case MAXAVA:
+          send("N\r");
+		  waitReceive("F3=",NONE);
+          send("2\r");
+          return waitReceive("Work with Configurations",NONE);
 		}
 
 	}	
@@ -770,7 +788,9 @@ public class check_as400{
 			case DMWRKNODE:
 				return parseICNodeSts(buffer);
 			case DSPLOG:
-				return parseLogSearch(buffer);				
+				return parseLogSearch(buffer);
+			case MAXAVA:
+				return parseMaxava(buffer);
 		}
 		return UNKNOWN;
 	}	
@@ -778,7 +798,7 @@ public class check_as400{
 	public static int getStatus(double val){
 		int returnStatus=UNKNOWN;
 	
-		if(ARGS.checkVariable==CPU || ARGS.checkVariable==DB || ARGS.checkVariable==JOBS || ARGS.checkVariable==AJOBS || ARGS.checkVariable==OUTQ || ARGS.checkVariable==DBFault || ARGS.checkVariable==CMD || ARGS.checkVariable==ASP || ARGS.checkVariable==CPUC || ARGS.checkVariable==CPUT || ARGS.checkVariable==MIMIX || ARGS.checkVariable==JOBQ || ARGS.checkVariable==FDN || ARGS.checkVariable==DJOBM || ARGS.checkVariable==DTAQD || ARGS.checkVariable==CKADDR){
+		if(ARGS.checkVariable==CPU || ARGS.checkVariable==DB || ARGS.checkVariable==JOBS || ARGS.checkVariable==AJOBS || ARGS.checkVariable==OUTQ || ARGS.checkVariable==DBFault || ARGS.checkVariable==CMD || ARGS.checkVariable==ASP || ARGS.checkVariable==CPUC || ARGS.checkVariable==CPUT || ARGS.checkVariable==MIMIX || ARGS.checkVariable==JOBQ || ARGS.checkVariable==FDN || ARGS.checkVariable==DJOBM || ARGS.checkVariable==DTAQD || ARGS.checkVariable==CKADDR || ARGS.checkVariable==LIB){
 			if(val<ARGS.tHoldWarn){
 				System.out.print("OK - ");
 				returnStatus=OK;
@@ -919,7 +939,7 @@ public class check_as400{
 
 		start=findToken(buffer,":",4)+1;
 		String status=(buffer.substring(start,start+9)).trim();
-		if(status.equals(LANG.ACTIVE)){
+		if(status.equals(LANG.ATTIVO)){
 			System.out.print("OK - ");
 			returnStatus=OK;
 		}
@@ -1305,6 +1325,30 @@ public class check_as400{
 		return returnStatus;
 	}
 	
+	public static int parseMaxava(String buffer){
+		int start=0;
+		int returnStatus=UNKNOWN;
+
+		start=findToken(buffer,ARGS.library,1)+25;
+		String status=(buffer.substring(start-1,start+1)).trim();
+		start=findToken(buffer,ARGS.library,1)+35;
+		status=status+(buffer.substring(start-1,start+1)).trim();
+		if(status.equals("00")){
+			status="synched";
+			System.out.print("OK - ");
+			returnStatus=OK;
+		}
+		else{
+			status="unsynched";
+			System.out.print("CRITICAL - ");
+			returnStatus=CRITICAL;
+		}
+
+		System.out.println("library("+ARGS.library+") status("+status+")");
+
+		return returnStatus;
+	}
+	
 	public static int parseCmdClp(String buffer){
 		int start=0;
 		int returnStatus=UNKNOWN;
@@ -1375,7 +1419,7 @@ public class check_as400{
 	public static int parseWrkDskSts(String buffer){
 		int returnStatus=UNKNOWN;
 		String failcnt="No",busycnt="No",degcnt="No",hdwcnt="No",pwlose="No";
-		int countString=findStr(buffer,LANG.ACTIVE);
+		int countString=findStr(buffer,LANG.ATTIVO);
     boolean botflag=true;
           
 		if(ARGS.checkVariable==DISK){
@@ -1401,7 +1445,7 @@ public class check_as400{
 		   else{
 		   		 send((char)27+"z");
 		  		 buffer=waitReceive("F3=",NONE);
-		  		 countString=findStr(buffer,LANG.ACTIVE)+countString;
+		  		 countString=findStr(buffer,LANG.ATTIVO)+countString;
 		   }
 		  }
 		  
@@ -1438,7 +1482,9 @@ public class check_as400{
 	public static int parseWrkPrb(String buffer){
 		int count=0;
 		int count1=0;
+		int countr=0;
 		String buffer1 = buffer;
+		String bufferr = buffer;
 		int returnStatus=UNKNOWN;
 		while(buffer1.indexOf("PREPARED")!=-1){
 			 buffer1 = buffer1.substring(buffer.indexOf("PREPARED") + 8); 
@@ -1447,10 +1493,14 @@ public class check_as400{
 		while(buffer.indexOf("OPENED")!=-1){
 			 buffer = buffer.substring(buffer.indexOf("OPENED") + 6); 
        count++; 
+		}
+		while(bufferr.indexOf("READY")!=-1){
+			 bufferr = bufferr.substring(buffer.indexOf("READY") + 5); 
+       countr++; 
        returnStatus=CRITICAL;
 		}
-		if (count==0){returnStatus=OK;}
-		System.out.println("There are "+count+" OPENED / "+count1+" PREPARED status problems. | prb="+count+";1;1;0; ");
+		if (countr==0){returnStatus=OK;}
+		System.out.println("There are "+countr+" READY / "+count+" OPENED / "+count1+" PREPARED status problems. | prb="+countr+";1;1;0; ");
 		return returnStatus;
 	}	
 
@@ -1698,8 +1748,13 @@ public class check_as400{
 			
 			if(ARGS.DEBUG) System.out.println("  waiting for login to process...");
 			/*Wait and recieve command screen*/
-			if(waitReceive("===>",LOGIN)!=null)
-				return true;
+			if(ARGS.userName.equals("MAXNZ")){
+				if(waitReceive("QCTL",LOGIN)!=null)
+					return true;
+			}
+			else
+				if(waitReceive("===>",LOGIN)!=null)
+					return true;
 		}
 		
 		return false;
@@ -1861,14 +1916,26 @@ public class check_as400{
 	}
 	
 	public static void logout(int exitStatus){
-		//send F3
-		if(ARGS.DEBUG) System.out.println("Logging out...\n  sending F3...");
-		send((char)27+"3");
-		waitReceive("===>",NONE);
+		if(ARGS.userName.equals("MAXNZ")){
+			//send F3
+			if(ARGS.DEBUG) System.out.println("Logging out...\n  sending F3...");
+			send((char)27+"3");
+			waitReceive("QINTER",NONE);
 
-		if(ARGS.DEBUG) System.out.println("  requesting signoff...");
-		//send logout
-		send("signoff *nolist\r");
+			if(ARGS.DEBUG) System.out.println("  requesting signoff...");
+			//send F3
+			send((char)27+"3");
+		}
+		else{
+			//send F3
+			if(ARGS.DEBUG) System.out.println("Logging out...\n  sending F3...");
+			send((char)27+"3");
+			waitReceive("===>",NONE);
+
+			if(ARGS.DEBUG) System.out.println("  requesting signoff...");
+			//send logout
+			send("signoff *nolist\r");
+		}
 		//waitReceive(";53H",NONE);
 		waitReceive(LANG.LOGIN_SCREEN,NONE);
 		
@@ -1880,6 +1947,7 @@ public class check_as400{
 
 		close();
 		if(ARGS.DEBUG) System.out.println("Logged out.");
+
 		System.exit(exitStatus);
 	}	
 
@@ -1972,9 +2040,9 @@ public class check_as400{
 	private static check_as400_lang LANG;
 	
 	//These constants are for the Commands
-	final static int WRKSYSSTS=0,WRKOUTQ=1,DSPMSG=2,DSPSBSD=3,DSPJOB=4,WRKACTJOB=5,CMDLOGIN=6,CMDCLP=7,WRKDSKSTS=8,WRKASPBRM=9,WRKSYSACT=10,DSPDGSTS=11,WRKJOBQ=12,CHKJOBSTS=13,DMWRKNODE=14,DMWRKGRP=15,DMSWTCHRDY=16,TOPCPUJOB=17,WRKPRB=18,DSPFD=19,DSPJOBM=20,DSPDTAQD=21,DSPLOG=22;
+	final static int WRKSYSSTS=0,WRKOUTQ=1,DSPMSG=2,DSPSBSD=3,DSPJOB=4,WRKACTJOB=5,CMDLOGIN=6,CMDCLP=7,WRKDSKSTS=8,WRKASPBRM=9,WRKSYSACT=10,DSPDGSTS=11,WRKJOBQ=12,CHKJOBSTS=13,DMWRKNODE=14,DMWRKGRP=15,DMSWTCHRDY=16,TOPCPUJOB=17,WRKPRB=18,DSPFD=19,DSPJOBM=20,DSPDTAQD=21,DSPLOG=22,MAXAVA=23;
 	//These constants are for the variables
-	final static int CPU=0,DB=1,US=2,JOBS=3,MSG=4,OUTQ=5,SBS=6,DJOB=7,AJOBS=8,DBFault=9,CMD=10,DISK=11,ASP=12,CPUC=13,MIMIX=14,JOBQ=15,JOBSTS=16,ICNODE=17,ICGROUP=18,ICSWRDY=19,CPUT=20,PRB=21,FDN=22,DJOBM=23,DTAQD=24,CKMSG=25,CKADDR=26;
+	final static int CPU=0,DB=1,US=2,JOBS=3,MSG=4,OUTQ=5,SBS=6,DJOB=7,AJOBS=8,DBFault=9,CMD=10,DISK=11,ASP=12,CPUC=13,MIMIX=14,JOBQ=15,JOBSTS=16,ICNODE=17,ICGROUP=18,ICSWRDY=19,CPUT=20,PRB=21,FDN=22,DJOBM=23,DTAQD=24,CKMSG=25,CKADDR=26,LIB=27;
 	//These constants are for the wait recieve, controlling
 	//any other logic that it should turn on. For example checking
 	//for invalid login.

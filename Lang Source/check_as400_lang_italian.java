@@ -1,13 +1,14 @@
 //Nagios Plugin to check an IBM AS/400
 //
 //Developed September 2004 
-//Last Modified June 2013
+//Last Modified June 2021
 //
 //This class is used as a varible structure
 //holding language conversions for parsing tokens 
 //
 //Definitions for the ITALIAN language
 //provided by Morandotti
+//revised by francescosandri
 //
 
 public class check_as400_lang{
@@ -16,7 +17,7 @@ public class check_as400_lang{
 
 	//This is found at the bottom when you type dspjob (name of a job 
 	//that exists)
-	public String SELECTION="Selezione";
+	public String SELECTION="Scelta";
 	
 	//This is found at the end of lists
 	public String LIST_END="Fine";
@@ -36,13 +37,13 @@ public class check_as400_lang{
 	public String DISPLAY_MESSAGES="Display Messages";
 	
 	//This is the status of job or sbs when you type dspjob or dspsbsd
-	public String ACTIVE="ATTIVO";
+	public String ACTIVE="ACTIVE";
 	
 	//This is the "DB Capability" dsplay when you type wrksyssts
 	public String DB_CAPABILITY="capacit\u00E0 DB";
 	
 	//This is le display for the login screen
-	public String LOGIN_SCREEN="Sistema . . . . .";
+	public String LOGIN_SCREEN="Sistema";
 
 	//Run wrkoutq blah* and it will say "(No output queues)"
 	public String NO_OUTPUT_QUEUES="Non ci sono code di emissione";
@@ -75,6 +76,7 @@ public class check_as400_lang{
 	public String MSG_NOT_NEED_REPLY="Messaggi che non richiedono risposta";
 	
 	//WRKDSKSTS The "Request" message.
+	public String ATTIVO="ATTIVO";
 	public String REQUEST_WORD="Ric";
 	public String DSK_STS_COMPRESSION="Compressione";
 };

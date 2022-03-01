@@ -1,7 +1,7 @@
 //Nagios Plugin to check an IBM AS/400
 //
 //Developed June 2003
-//Last Modified May 13 2013
+//Last Modified Jan 18 2021
 //
 //This class is used as a varible structure
 //holding parsed command line arguments
@@ -12,7 +12,7 @@ public class check_as400_cmd_vars{
         public String hostName,userName,passWord;
 
         //These store specific information on a requested operation
-        public String outQ,msgUser,subSystem,job,aspNums,cpuNum,dgDef,jobQ,status,chk_status,icNode,icGroup,cmdCL,fdFile,cmd_parm,dtaqdName,startTime,msgID,srchText,addrtype;
+        public String outQ,msgUser,subSystem,job,aspNums,cpuNum,dgDef,jobQ,status,chk_status,icNode,icGroup,cmdCL,fdFile,cmd_parm,dtaqdName,startTime,msgID,srchText,addrtype,library;
 
         //These keep track of what we are suppose to be checking!
         public int checkVariable,command,outQFlags=0,JobFlags;
