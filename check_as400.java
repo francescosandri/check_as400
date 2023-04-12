@@ -1487,7 +1487,7 @@ public class check_as400{
 		String bufferr = buffer;
 		int returnStatus=UNKNOWN;
 		while(buffer1.indexOf("PREPARED")!=-1){
-			 buffer1 = buffer1.substring(buffer.indexOf("PREPARED") + 8); 
+			 buffer1 = buffer1.substring(buffer1.indexOf("PREPARED") + 8); 
        count1++;
 		}
 		while(buffer.indexOf("OPENED")!=-1){
@@ -1495,7 +1495,7 @@ public class check_as400{
        count++; 
 		}
 		while(bufferr.indexOf("READY")!=-1){
-			 bufferr = bufferr.substring(buffer.indexOf("READY") + 5); 
+			 bufferr = bufferr.substring(bufferr.indexOf("READY") + 5); 
        countr++; 
        returnStatus=CRITICAL;
 		}
