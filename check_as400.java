@@ -1483,24 +1483,33 @@ public class check_as400{
 		int count=0;
 		int count1=0;
 		int countr=0;
+		int counts=0;
+		int c=0;
 		String buffer1 = buffer;
 		String bufferr = buffer;
+		String buffers = buffer;
 		int returnStatus=UNKNOWN;
+		while(buffers.indexOf("SENT")!=-1){
+			 buffers = buffers.substring(buffers.indexOf("SENT") + 4); 
+        counts++;
+		returnStatus=CRITICAL;
+		}
 		while(buffer1.indexOf("PREPARED")!=-1){
 			 buffer1 = buffer1.substring(buffer1.indexOf("PREPARED") + 8); 
-       count1++;
+        count1++;
 		}
 		while(buffer.indexOf("OPENED")!=-1){
 			 buffer = buffer.substring(buffer.indexOf("OPENED") + 6); 
-       count++; 
+        count++; 
 		}
 		while(bufferr.indexOf("READY")!=-1){
 			 bufferr = bufferr.substring(bufferr.indexOf("READY") + 5); 
-       countr++; 
-       returnStatus=CRITICAL;
+        countr++; 
+        returnStatus=CRITICAL;
 		}
-		if (countr==0){returnStatus=OK;}
-		System.out.println("There are "+countr+" READY / "+count+" OPENED / "+count1+" PREPARED status problems. | prb="+countr+";1;1;0; ");
+		c = counts+countr;
+		if (c==0){returnStatus=OK;}
+		System.out.println("There are "+counts+" SENT / "+countr+" READY / "+count+" OPENED / "+count1+" PREPARED status problems. | prb="+c+";1;1;0; ");
 		return returnStatus;
 	}	
 
